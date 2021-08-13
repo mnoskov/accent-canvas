@@ -44,15 +44,17 @@ var Accent = function(canvas, options) {
         zoomSpeed: 100,
         style: {
             fill: 'none',
-            opacity: 0,
+            fillOpacity: 0,
             stroke: 'none',
-            lineWidth: 0
+            strokeWidth: 0,
+            strokeOpacity: 0
         },
         hoverStyle: {
             fill: '#d1aa6e',
-            opacity: 0.6,
+            fillOpacity: 0.6,
             stroke: 'none',
-            lineWidth: 0
+            strokeWidth: 0,
+            strokeOpacity: 0
         },
         hoverSpeed: 150
     };
@@ -432,38 +434,49 @@ Accent.prototype = {
         this.draw();
     },
 
-    startFadeAnimation: function(target, fadeIn) {
-        var style = target.style || this.options.style,
-            hoverStyle = target.hoverStyle || this.options.hoverStyle;
+    makeProgressColor: function(start, end, progress)
+    {
+        var result;
 
-        var styles = [{
-            opacity: style.opacity,
-            fill: style.fill
-        }, {
-            opacity: hoverStyle.opacity,
-            fill: hoverStyle.fill
-        }];
+        if (start.r == end.r && start.g == end.g && start.b == end.b || !progress) {
+            result = start;
+        } else if (progress == 1) {
+            result = end;
+        } else {
+            result = {
+                r: parseInt(start.fill.r + progress * (end.fill.r - start.fill.r)),
+                g: parseInt(start.fill.g + progress * (end.fill.g - start.fill.g)),
+                b: parseInt(start.fill.b + progress * (end.fill.b - start.fill.b))
+            };
+        }
+
+        return tinycolor(result).toRgbString();
+    },
+
+    startFadeAnimation: function(target, fadeIn) {
+        var styles = [
+            Object.assign({}, target.style || this.options.style),
+            Object.assign({}, target.hoverStyle || this.options.hoverStyle)
+        ];
 
         if (!fadeIn) {
             styles = styles.reverse();
         }
 
         if (target.animation) {
-            styles[0] = {
-                opacity: target.animation.styles.opacity,
-                fill: target.animation.styles.fill
-            };
+            styles[0] = Object.assign(styles[0], target.animation.styles);
 
             var index = this.animations.indexOf(target.animation);
-
             if (index !== -1) {
                 this.animations.splice(index, 1);
             }
         }
 
         if (window.tinycolor) {
-            styles[0].fill = tinycolor(styles[0].fill).toRgb();
-            styles[1].fill = tinycolor(styles[1].fill).toRgb();
+            for (var i = 0; i < 2; i++) {
+                styles[i].fill   = tinycolor(styles[i].fill).toRgb();
+                styles[i].stroke = tinycolor(styles[i].stroke).toRgb();
+            }
         }
 
         (function(self, styles) {
@@ -474,16 +487,13 @@ Accent.prototype = {
                 duration: self.options.hoverSpeed,
                 draw: function(progress) {
                     if (target.animation) {
-                        target.animation.styles.opacity = styles[0].opacity + progress * (styles[1].opacity - styles[0].opacity);
+                        target.animation.styles.fillOpacity = styles[0].fillOpacity + progress * (styles[1].fillOpacity - styles[0].fillOpacity);
+                        target.animation.styles.strokeOpacity = styles[0].strokeOpacity + progress * (styles[1].strokeOpacity - styles[0].strokeOpacity);
+                        target.animation.styles.strokeWidth = styles[0].strokeWidth + progress * (styles[1].strokeWidth - styles[0].strokeWidth);
 
                         if (window.tinycolor) {
-                             var color = {
-                                r: parseInt(styles[0].fill.r + progress * (styles[1].fill.r - styles[0].fill.r)),
-                                g: parseInt(styles[0].fill.g + progress * (styles[1].fill.g - styles[0].fill.g)),
-                                b: parseInt(styles[0].fill.b + progress * (styles[1].fill.b - styles[0].fill.b))
-                            };
-
-                            target.animation.styles.fill = tinycolor(color).toRgbString();
+                             target.animation.styles.fill = self.makeProgressColor(styles[0].fill, styles[1].fill, progress);
+                             target.animation.styles.stroke = self.makeProgressColor(styles[0].stroke, styles[1].stroke, progress);
                         }
 
                         self.draw();
@@ -549,35 +559,37 @@ Accent.prototype = {
             for (var i = 0; i < this.options.areas.length; i++) {
                 var area = this.options.areas[i];
 
-                if (!area.active && !area.style && !area.animation) {
+                if (!area.active && !area.style && !area.animation && !this.options.style.fillOpacity && !this.options.style.strokeOpacity) {
                     continue;
                 }
 
                 var style;
 
-                if (area.active) {
+                if (area.animation) {
+                    style = area.animation.styles;
+                } else if (area.active) {
                     style = area.hoverStyle || this.options.hoverStyle;
                 } else {
                     style = area.style || this.options.style;
                 }
 
-                if (area.animation) {
-                    this.context.globalAlpha = area.animation.styles.opacity;
+                if (window.tinycolor) {
+                    var color = tinycolor(style.fill).setAlpha(style.fillOpacity);
+                    this.context.fillStyle = color.toRgbString();
 
-                    if (window.tinycolor) {
-                        this.context.fillStyle = area.animation.styles.fill;
-                    }
+                    color = tinycolor(style.stroke).setAlpha(style.strokeOpacity);
+                    this.context.strokeStyle = color.toRgbString();
                 } else {
-                    this.context.fillStyle = style.fill;
-                    this.context.globalAlpha = style.opacity;
+                    this.context.globalAlpha = style.fillOpacity;
+                    this.context.fillStyle   = style.fill;
+                    this.context.strokeStyle = style.stroke;
                 }
+
+                this.context.lineWidth = style.strokeWidth;
 
                 if (!this.context.globalAlpha) {
                     continue;
                 }
-
-                this.context.strokeStyle = style.stroke;
-                this.context.lineWidth   = style.lineWidth;
 
                 this.context.beginPath();
 
@@ -591,7 +603,7 @@ Accent.prototype = {
 
                 this.context.lineTo(area.virtCoords[0], area.virtCoords[1]);
 
-                if (style.lineWidth) {
+                if (style.strokeWidth) {
                     this.context.stroke();
                 }
 
