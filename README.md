@@ -11,15 +11,16 @@ let accent = new Accent('.container', {
     startZoom: 'cover',
     style: {
         fill: 'none',
-        opacity: 0,
+        fillOpacity: 0,
         stroke: 'none',
-        lineWidth: 0
+        strokeWidth: 0
     },
     hoverStyle: {
         fill: '#1CBB9D',
-        opacity: 0.4,
+        fillOpacity: 0.4,
         stroke: '#1CBB9D',
-        lineWidth: 3
+        strokeWidth: 3,
+        strokeOpacity: 1
     },
     hoverSpeed: 100
 });
