@@ -161,6 +161,22 @@ Accent.prototype = {
             self.mousemove(event);
         });
 
+        this.canvas.addEventListener('touchstart', function(event) {
+            self.mousedown(event);
+        });
+
+        this.canvas.addEventListener('touchend', function(event) {
+            self.mouseup(event);
+        });
+
+        this.canvas.addEventListener('touchcancel', function(event) {
+            self.mouseup(event);
+        });
+
+        this.canvas.addEventListener('touchmove', function(event) {
+            self.mousemove(event);
+        });
+
         window.addEventListener('resize', function(event) {
             self.resize(event);
         });
@@ -302,12 +318,26 @@ Accent.prototype = {
         return areaFound;
     },
 
-    mousedown: function(e) {
-        this.dragStart = {
+    getPointFromEvent(e) {
+        if (e.changedTouches) {
+            var rect = e.target.getBoundingClientRect();
+
+            return {
+                x: e.changedTouches[0].clientX - rect.x - window.scrollX,
+                y: e.changedTouches[0].clientY - rect.y - window.scrollY
+            };
+        }
+
+        return {
             x: e.offsetX,
             y: e.offsetY
         };
+    },
 
+    mousedown: function(e) {
+        e.preventDefault();
+
+        this.dragStart = this.getPointFromEvent(e);
         this.isMoved = false;
     },
 
@@ -317,7 +347,8 @@ Accent.prototype = {
         }
 
         if (this.options.areas) {
-            var area = this.findAreaUnderCursor({x: e.offsetX, y: e.offsetY});
+            var point = this.getPointFromEvent(e);
+            var area = this.findAreaUnderCursor(point);
 
             if (area) {
                 var event = new CustomEvent('areaclick', {
@@ -333,17 +364,21 @@ Accent.prototype = {
     },
 
     mousemove: function(e) {
-        var mousePos = this.rmapv(e.offsetX, e.offsetY);
+        var point = this.getPointFromEvent(e);
+        var mousePos = this.rmapv(point.x, point.y);
 
-        if (e.buttons) {
+        if (e.buttons || e.changedTouches) {
             if (this.dragStart == null) {
-                this.dragStart = {
-                    x: e.offsetX,
-                    y: e.offsetY
-                };
+                this.dragStart = point;
             }
 
-            this.isMoved = true;
+            if (e.changedTouches) {
+                if (Math.abs(this.dragStart.x - point.x) > 5 || Math.abs(this.dragStart.y - point.y) > 5) {
+                    this.isMoved = true;
+                }
+            } else {
+                this.isMoved = true;
+            }
 
             var startPos = this.rmapv(this.dragStart.x, this.dragStart.y);
 
@@ -351,15 +386,15 @@ Accent.prototype = {
             this.offset.x += startPos.x - mousePos.x;
             this.offset.y += startPos.y - mousePos.y;
 
-            this.dragStart.x = e.offsetX;
-            this.dragStart.y = e.offsetY;
+            this.dragStart.x = point.x;
+            this.dragStart.y = point.y;
 
             this.recalculatePoints();
             this.draw();
         }
 
         if (this.options.areas) {
-            var area = this.findAreaUnderCursor({x: e.offsetX, y: e.offsetY});
+            var area = this.findAreaUnderCursor(point);
         }
     },
 
