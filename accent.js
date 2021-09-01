@@ -318,7 +318,7 @@ Accent.prototype = {
         return areaFound;
     },
 
-    getPointFromEvent(e) {
+    getPointFromEvent: function(e) {
         if (e.changedTouches) {
             var rect = e.target.getBoundingClientRect();
 
@@ -401,19 +401,73 @@ Accent.prototype = {
     mousewheel: function(e) {
         e.preventDefault();
 
-        var step  = this.options.zoomSteps.indexOf(this.zoom),
+        let step  = this.getZoomStep(this.zoom);
             delta = e.deltaY || e.detail || e.wheelDelta;
 
-        if (this.canvas.animation && step === -1 && this.zoomTo) {
+        if (this.canvas.animation && this.zoomTo) {
             step = this.options.zoomSteps.indexOf(this.zoomTo);
         }
 
         step += delta < 0 ? 1 : -1;
         step = Math.max(0, Math.min(step, this.options.zoomSteps.length - 1));
 
-        var vPoint = this.rmapv(e.offsetX, e.offsetY);
+        this.setZoom(this.options.zoomSteps[step], e.offsetX, e.offsetY);
+    },
 
-        this.zoomTo = this.options.zoomSteps[step];
+    getZoomStep: function(zoom) {
+        let step = this.options.zoomSteps.indexOf(zoom);
+
+        if (step === -1) {
+            let distance = null;
+
+            for (let i = 0; i < this.options.zoomSteps[i]; i++) {
+                let stepDistance = Math.abs(this.options.zoomSteps[i] - this.zoom);
+
+                if (distance === null || distance > stepDistance) {
+                    distance = stepDistance;
+                    step = i;
+                }
+            }
+        }
+
+        return step;
+    },
+
+    zoomIn: function() {
+        let step = this.getZoomStep(this.zoom);
+
+        if (this.canvas.animation && this.zoomTo) {
+            step = this.options.zoomSteps.indexOf(this.zoomTo);
+        }
+
+        step = Math.max(0, Math.min(step + 1, this.options.zoomSteps.length - 1));
+
+        this.setZoom(this.options.zoomSteps[step]);
+    },
+
+    zoomOut: function() {
+        let step = this.getZoomStep(this.zoom);
+
+        if (this.canvas.animation && this.zoomTo) {
+            step = this.options.zoomSteps.indexOf(this.zoomTo);
+        }
+
+        step = Math.max(0, Math.min(step - 1, this.options.zoomSteps.length - 1));
+
+        this.setZoom(this.options.zoomSteps[step]);
+    },
+
+    setZoom: function(zoom, x, y) {
+        if (typeof x == 'undefined') {
+            x = this.canvas.width * 0.5;
+        }
+        if (typeof y == 'undefined') {
+            y = this.canvas.height * 0.5;
+        }
+
+        var vPoint = this.rmapv(x, y);
+
+        this.zoomTo = zoom;
 
         if (this.canvas.animation) {
             this.canvas.animation.start    = performance.now();
