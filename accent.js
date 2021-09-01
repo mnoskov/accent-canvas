@@ -43,15 +43,8 @@ var Accent = function(canvas, options) {
         zoomSteps:  [0.3, 0.35, 0.4, 0.45, 0.5, 0.6, 0.7, 0.8, 0.9, 1, 1.2, 1.4, 1.6, 1.8, 2, 2.5, 3, 3.5, 4, 5, 6, 7, 8, 9, 10],
         zoomSpeed: 100,
         style: {
-            fill: 'none',
+            fill: '#000',
             fillOpacity: 0,
-            stroke: 'none',
-            strokeWidth: 0,
-            strokeOpacity: 0
-        },
-        hoverStyle: {
-            fill: '#d1aa6e',
-            fillOpacity: 0.6,
             stroke: 'none',
             strokeWidth: 0,
             strokeOpacity: 0
@@ -62,6 +55,13 @@ var Accent = function(canvas, options) {
     this.animations = [];
 
     this.setOptions(options);
+
+    this.setOptions({
+        hoverStyle: Object.assign({}, this.options.style, options.hoverStyle || {
+            fillOpacity: Math.min(1, this.options.style.fillOpacity + 0.3),
+            strokeOpacity: Math.min(1, this.options.style.strokeOpacity + 0.3)
+        })
+    });
 
     this.initialize();
 };
@@ -145,6 +145,13 @@ Accent.prototype = {
                     area.bounds[0].y = Math.min(area.bounds[0].y, area.coords[j + 1]);
                     area.bounds[1].x = Math.max(area.bounds[1].x, area.coords[j]);
                     area.bounds[1].y = Math.max(area.bounds[1].y, area.coords[j + 1]);
+                }
+
+                if (area.style) {
+                    area.hoverStyle = Object.assign({}, area.style, area.hoverStyle || {
+                        fillOpacity: Math.min(1, area.style.fillOpacity + 0.3),
+                        strokeOpacity: Math.min(1, area.style.strokeOpacity + 0.3)
+                    });
                 }
             }
         }
@@ -533,9 +540,9 @@ Accent.prototype = {
             result = end;
         } else {
             result = {
-                r: parseInt(start.fill.r + progress * (end.fill.r - start.fill.r)),
-                g: parseInt(start.fill.g + progress * (end.fill.g - start.fill.g)),
-                b: parseInt(start.fill.b + progress * (end.fill.b - start.fill.b))
+                r: parseInt(start.r + progress * (end.r - start.r)),
+                g: parseInt(start.g + progress * (end.g - start.g)),
+                b: parseInt(start.b + progress * (end.b - start.b))
             };
         }
 
