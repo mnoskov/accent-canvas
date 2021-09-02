@@ -515,48 +515,59 @@ Accent.prototype = {
 
         this.zoomTo = zoom;
 
-        let speed = animate === false ? 0 : this.options.zoomSpeed;
+        if (animate === false) {
+            var rx = (vPoint.x - this.offset.x) / this.vwidth();
+            var ry = (vPoint.y - this.offset.y) / this.vheight();
 
-        if (this.canvas.animation) {
-            this.canvas.animation.start    = performance.now();
-            this.canvas.animation.zoomFrom = this.zoom;
-            this.canvas.animation.zoomTo   = this.zoomTo;
+            this.zoom = this.zoomTo;
+
+            this.offset.x = vPoint.x - rx * this.vwidth();
+            this.offset.y = vPoint.y - ry * this.vheight();
+
+            this.recalculatePoints();
+            this.draw();
         } else {
-            (function(self, vPoint) {
-                var animation = {
-                    target: self.canvas,
-                    start: performance.now(),
-                    duration: speed,
-                    zoomFrom: self.zoom,
-                    zoomTo: self.zoomTo,
-                    draw: function(progress, animation) {
-                        var rx = (vPoint.x - self.offset.x) / self.vwidth();
-                        var ry = (vPoint.y - self.offset.y) / self.vheight();
+            if (this.canvas.animation) {
+                this.canvas.animation.start    = performance.now();
+                this.canvas.animation.zoomFrom = this.zoom;
+                this.canvas.animation.zoomTo   = this.zoomTo;
+            } else {
+                (function(self, vPoint) {
+                    var animation = {
+                        target: self.canvas,
+                        start: performance.now(),
+                        duration: self.options.zoomSpeed,
+                        zoomFrom: self.zoom,
+                        zoomTo: self.zoomTo,
+                        draw: function(progress, animation) {
+                            var rx = (vPoint.x - self.offset.x) / self.vwidth();
+                            var ry = (vPoint.y - self.offset.y) / self.vheight();
 
-                        self.zoom = animation.zoomFrom + progress * (animation.zoomTo - animation.zoomFrom);
+                            self.zoom = animation.zoomFrom + progress * (animation.zoomTo - animation.zoomFrom);
 
-                        self.offset.x = vPoint.x - rx * self.vwidth();
-                        self.offset.y = vPoint.y - ry * self.vheight();
+                            self.offset.x = vPoint.x - rx * self.vwidth();
+                            self.offset.y = vPoint.y - ry * self.vheight();
 
-                        self.recalculatePoints();
-                        self.draw();
-                    },
-                    end: function() {
-                        var event = new CustomEvent('zoomchanged', {
-                            bubbles: true,
-                            detail: {
-                                zoom: self.zoom
-                            }
-                        });
+                            self.recalculatePoints();
+                            self.draw();
+                        },
+                        end: function() {
+                            var event = new CustomEvent('zoomchanged', {
+                                bubbles: true,
+                                detail: {
+                                    zoom: self.zoom
+                                }
+                            });
 
-                        self.canvas.dispatchEvent(event);
-                    }
-                };
+                            self.canvas.dispatchEvent(event);
+                        }
+                    };
 
-                self.canvas.animation = animation;
-                self.animations.push(animation);
-                self.animate();
-            })(this, vPoint);
+                    self.canvas.animation = animation;
+                    self.animations.push(animation);
+                    self.animate();
+                })(this, vPoint);
+            }
         }
     },
 
