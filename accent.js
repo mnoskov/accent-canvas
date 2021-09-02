@@ -326,13 +326,26 @@ Accent.prototype = {
     },
 
     getPointFromEvent: function(e) {
-        if (e.changedTouches) {
-            var rect = e.target.getBoundingClientRect();
+        if (e.touches) {
+            let touches = e.targetTouches.length ? e.targetTouches : e.changedTouches;
+            let rect = e.target.getBoundingClientRect();
 
-            return {
-                x: e.changedTouches[0].clientX - rect.x - window.scrollX,
-                y: e.changedTouches[0].clientY - rect.y - window.scrollY
+            let result = {
+                x: 0,
+                y: 0
             };
+
+            for (let i = 0; i < touches.length; i++) {
+                result.x += touches[i].clientX;
+                result.y += touches[i].clientY;
+            }
+
+            result = {
+                x: result.x / touches.length - rect.x - window.scrollX,
+                y: result.y / touches.length - rect.y - window.scrollY
+            };
+
+            return result;
         }
 
         return {
@@ -346,6 +359,17 @@ Accent.prototype = {
 
         this.dragStart = this.getPointFromEvent(e);
         this.isMoved = false;
+        this.isScaling = false;
+
+        if (e.targetTouches) {
+            var touches = e.targetTouches;
+
+            if (touches.length >= 2) {
+                this.touchesDistance = this.distance(touches[0], touches[1]);
+                this.scalingZoomStart = this.zoom;
+                this.isScaling = true;
+            }
+        }
     },
 
     mouseup: function(e) {
@@ -370,16 +394,20 @@ Accent.prototype = {
         }
     },
 
-    mousemove: function(e) {
-        var point = this.getPointFromEvent(e);
-        var mousePos = this.rmapv(point.x, point.y);
+    distance: function(p1, p2) {
+        return (Math.sqrt(Math.pow((p1.clientX - p2.clientX), 2) + Math.pow((p1.clientY - p2.clientY), 2)));
+    },
 
-        if (e.buttons || e.changedTouches) {
+    mousemove: function(e) {
+        let point = this.getPointFromEvent(e);
+        let mousePos = this.rmapv(point.x, point.y);
+
+        if (e.buttons || e.touches) {
             if (this.dragStart == null) {
                 this.dragStart = point;
             }
 
-            if (e.changedTouches) {
+            if (e.touches) {
                 if (Math.abs(this.dragStart.x - point.x) > 5 || Math.abs(this.dragStart.y - point.y) > 5) {
                     this.isMoved = true;
                 }
@@ -387,21 +415,32 @@ Accent.prototype = {
                 this.isMoved = true;
             }
 
-            var startPos = this.rmapv(this.dragStart.x, this.dragStart.y);
+            if (this.isMoved) {
+                let startPos = this.rmapv(this.dragStart.x, this.dragStart.y);
 
-            // Adjust offset
-            this.offset.x += startPos.x - mousePos.x;
-            this.offset.y += startPos.y - mousePos.y;
+                if (e.targetTouches) {
+                    let touches = e.targetTouches;
 
-            this.dragStart.x = point.x;
-            this.dragStart.y = point.y;
+                    if (this.isScaling && touches.length >= 2) {
+                        let zoom = this.scalingZoomStart * this.distance(touches[0], touches[1]) / this.touchesDistance;
+                        this.setZoom(zoom, point.x, point.y, false);
+                    }
+                }
 
-            this.recalculatePoints();
-            this.draw();
+                // Adjust offset
+                this.offset.x += startPos.x - mousePos.x;
+                this.offset.y += startPos.y - mousePos.y;
+
+                this.dragStart.x = point.x;
+                this.dragStart.y = point.y;
+
+                this.recalculatePoints();
+                this.draw();
+            }
         }
 
         if (this.options.areas) {
-            var area = this.findAreaUnderCursor(point);
+            this.findAreaUnderCursor(point);
         }
     },
 
@@ -464,17 +503,19 @@ Accent.prototype = {
         this.setZoom(this.options.zoomSteps[step]);
     },
 
-    setZoom: function(zoom, x, y) {
-        if (typeof x == 'undefined') {
+    setZoom: function(zoom, x, y, animate) {
+        if (typeof x == 'undefined' || x === null) {
             x = this.canvas.width * 0.5;
         }
-        if (typeof y == 'undefined') {
+        if (typeof y == 'undefined' || y === null) {
             y = this.canvas.height * 0.5;
         }
 
         var vPoint = this.rmapv(x, y);
 
         this.zoomTo = zoom;
+
+        let speed = animate === false ? 0 : this.options.zoomSpeed;
 
         if (this.canvas.animation) {
             this.canvas.animation.start    = performance.now();
@@ -485,7 +526,7 @@ Accent.prototype = {
                 var animation = {
                     target: self.canvas,
                     start: performance.now(),
-                    duration: self.options.zoomSpeed,
+                    duration: speed,
                     zoomFrom: self.zoom,
                     zoomTo: self.zoomTo,
                     draw: function(progress, animation) {
