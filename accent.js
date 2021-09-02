@@ -466,7 +466,7 @@ Accent.prototype = {
         if (step === -1) {
             let distance = null;
 
-            for (let i = 0; i < this.options.zoomSteps[i]; i++) {
+            for (let i = 0; i < this.options.zoomSteps.length; i++) {
                 let stepDistance = Math.abs(this.options.zoomSteps[i] - this.zoom);
 
                 if (distance === null || distance > stepDistance) {
