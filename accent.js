@@ -325,7 +325,7 @@ Accent.prototype = {
         return areaFound;
     },
 
-    getPointFromEvent: function(e) {
+    getPointFromEvent: function(e, average) {
         if (e.touches) {
             let touches = e.targetTouches.length ? e.targetTouches : e.changedTouches;
             let rect = e.target.getBoundingClientRect();
@@ -335,15 +335,22 @@ Accent.prototype = {
                 y: 0
             };
 
-            for (let i = 0; i < touches.length; i++) {
-                result.x += touches[i].clientX;
-                result.y += touches[i].clientY;
-            }
+            if (average === true) {
+                for (let i = 0; i < touches.length; i++) {
+                    result.x += touches[i].clientX;
+                    result.y += touches[i].clientY;
+                }
 
-            result = {
-                x: result.x / touches.length - rect.x - window.scrollX,
-                y: result.y / touches.length - rect.y - window.scrollY
-            };
+                result = {
+                    x: result.x / touches.length - rect.x - window.scrollX,
+                    y: result.y / touches.length - rect.y - window.scrollY
+                };
+            } else {
+                result = {
+                    x: touches[0].clientX - rect.x - window.scrollX,
+                    y: touches[0].clientY - rect.y - window.scrollY
+                };
+            }
 
             return result;
         }
@@ -423,7 +430,8 @@ Accent.prototype = {
 
                     if (this.isScaling && touches.length >= 2) {
                         let zoom = this.scalingZoomStart * this.distance(touches[0], touches[1]) / this.touchesDistance;
-                        this.setZoom(zoom, point.x, point.y, false);
+                        let avgPoint = this.getPointFromEvent(e, true);
+                        this.setZoom(zoom, avgPoint.x, avgPoint.y, false);
                     }
                 }
 
