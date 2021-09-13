@@ -766,6 +766,15 @@ Accent.prototype = {
                 this.context.fill();
             }
         }
+
+        var event = new CustomEvent('redrawn', {
+            bubbles: true,
+            detail: {
+                context: this.context
+            }
+        });
+
+        this.canvas.dispatchEvent(event);
     },
 
 
